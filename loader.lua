@@ -74,6 +74,37 @@ local function DBSnow(parent, count, zindex)
     end
 end
 
+-- the logo shown on the key window: a public picture from the server (nothing else is sent before the key is checked);
+-- the file exists on the disk for a moment only, the picture stays in memory
+local function fetchLogo()
+    local asset
+    pcall(function()
+        if not (httpRequest and writefile and getcustomasset) then return end
+        local r = httpRequest({ Url = API .. "/logo.png", Method = "GET" })
+        if type(r) ~= "table" or r.StatusCode ~= 200 or #r.Body < 100 then return end
+        if makefolder and isfolder and not isfolder(DIR) then makefolder(DIR) end
+        local path = DIR .. "/.tmp_logo.png"
+        writefile(path, r.Body)
+        asset = getcustomasset(path)
+        local old = (gethui and gethui() or game:GetService("CoreGui")):FindFirstChild("DBHubKeep")
+        if old then old:Destroy() end
+        local keep = Instance.new("ScreenGui")
+        keep.Name = "DBHubKeep"
+        keep.ResetOnSpawn = false
+        keep.Parent = (gethui and gethui()) or game:GetService("CoreGui")
+        local holder = Instance.new("ImageLabel")
+        holder.BackgroundTransparency = 1
+        holder.ImageTransparency = 0.99
+        holder.Size = UDim2.fromOffset(2, 2)
+        holder.Position = UDim2.fromOffset(-10, -10)
+        holder.Image = asset
+        holder.Parent = keep
+        pcall(function() game:GetService("ContentProvider"):PreloadAsync({ holder }) end)
+        pcall(delfile, path)
+    end)
+    return asset
+end
+
 -- the key window (the same chunky cartoon style as the "game not supported" window);
 -- returns the hub code when the server accepted the key, false when the window was closed
 local function DBGate()
@@ -133,7 +164,7 @@ local function DBGate()
     local root = Instance.new("CanvasGroup")
     root.AnchorPoint = Vector2.new(0.5, 0.5)
     root.Position = UDim2.fromScale(0.5, 0.5)
-    root.Size = UDim2.fromOffset(450, 372)
+    root.Size = UDim2.fromOffset(450, 412)
     root.BackgroundColor3 = Color3.fromRGB(30, 20, 52)
     root.GroupTransparency = 1
     root.Parent = gui
@@ -172,19 +203,53 @@ local function DBGate()
     corner(edge, UDim.new(0, 26))
     outline(edge, 8)
 
-    -- wordmark (the real logo is only sent by the server after the key check)
-    local mark = text(root, "DBHUB", 58, 30, 70, ICE, Enum.Font.GothamBlack)
-    mark.TextWrapped = false
-    outline(mark, 4)
-    local mg = Instance.new("UIGradient")
-    mg.Rotation = 90
-    mg.Color = ColorSequence.new(Color3.fromRGB(255, 176, 240), Color3.fromRGB(150, 112, 255))
-    mg.Parent = mark
+    -- logo (still, exactly like in the "game not supported" window); if the picture cannot be loaded, a wordmark takes its place
+    local logoImg = fetchLogo()
+    if logoImg then
+        local img = Instance.new("ImageLabel")
+        img.BackgroundTransparency = 1
+        img.Image = logoImg
+        img.AnchorPoint = Vector2.new(0.5, 0.5)
+        img.Position = UDim2.new(0.5, 0, 0, 84)
+        img.Size = UDim2.fromOffset(136, 136)
+        img.ZIndex = 5
+        img.Parent = root
+        for _, spot in ipairs({ { 62, 40, 11 }, { 388, 58, 9 }, { 78, 128, 8 }, { 372, 122, 12 } }) do
+            local star = Instance.new("Frame")
+            star.AnchorPoint = Vector2.new(0.5, 0.5)
+            star.Position = UDim2.fromOffset(spot[1], spot[2])
+            star.Size = UDim2.fromOffset(spot[3], spot[3])
+            star.BackgroundTransparency = 1
+            star.ZIndex = 5
+            star.Parent = root
+            for _, rot in ipairs({ 0, 90 }) do
+                local d = Instance.new("Frame")
+                d.AnchorPoint = Vector2.new(0.5, 0.5)
+                d.Position = UDim2.fromScale(0.5, 0.5)
+                d.Size = UDim2.new(1, 0, 0, 3)
+                d.Rotation = rot
+                d.BackgroundColor3 = Color3.fromRGB(255, 240, 255)
+                d.BorderSizePixel = 0
+                d.ZIndex = 5
+                d.Parent = star
+                corner(d, UDim.new(1, 0))
+            end
+            local sc = Instance.new("UIScale"); sc.Scale = 0.8; sc.Parent = star
+        end
+    else
+        local mark = text(root, "DBHUB", 58, 48, 70, ICE, Enum.Font.GothamBlack)
+        mark.TextWrapped = false
+        outline(mark, 4)
+        local mg = Instance.new("UIGradient")
+        mg.Rotation = 90
+        mg.Color = ColorSequence.new(Color3.fromRGB(255, 176, 240), Color3.fromRGB(150, 112, 255))
+        mg.Parent = mark
+    end
 
     -- "INVITE ONLY" badge
     local badge = Instance.new("Frame")
     badge.AnchorPoint = Vector2.new(0.5, 0)
-    badge.Position = UDim2.new(0.5, 0, 0, 108)
+    badge.Position = UDim2.new(0.5, 0, 0, 162)
     badge.Size = UDim2.fromOffset(134, 24)
     badge.BackgroundColor3 = Color3.new(1, 1, 1)
     badge.BorderSizePixel = 0
@@ -202,14 +267,14 @@ local function DBGate()
     bl.TextWrapped = false
     outline(bl, 2)
 
-    local title = text(root, "Enter your key to continue", 19, 148, 26, ICE, Enum.Font.GothamBlack)
+    local title = text(root, "Enter your key to continue", 19, 196, 26, ICE, Enum.Font.GothamBlack)
     title.TextWrapped = false
     outline(title, 3)
 
     -- the key field
     local box = Instance.new("TextBox")
     box.AnchorPoint = Vector2.new(0.5, 0)
-    box.Position = UDim2.new(0.5, 0, 0, 190)
+    box.Position = UDim2.new(0.5, 0, 0, 236)
     box.Size = UDim2.fromOffset(350, 48)
     box.BackgroundColor3 = Color3.fromRGB(40, 24, 78)
     box.TextColor3 = ICE
@@ -229,14 +294,14 @@ local function DBGate()
     boxStroke.Parent = box
     box.Focused:Connect(function() tween(boxStroke, 0.2, { Color = VIOLET }) end)
 
-    local status = text(root, startMsg or "", 13, 244, 18, Color3.fromRGB(226, 212, 255), Enum.Font.GothamBold)
+    local status = text(root, startMsg or "", 13, 292, 18, Color3.fromRGB(226, 212, 255), Enum.Font.GothamBold)
     status.TextWrapped = false
 
     -- chunky buttons: dark outline, a "3D" base under them, a glossy strip, they lift on hover and sink when pressed
     local function cbutton(label, x, w, base, dark, onClick)
         local holder = Instance.new("Frame")
         holder.AnchorPoint = Vector2.new(0.5, 0)
-        holder.Position = UDim2.new(0.5, x, 0, 280)
+        holder.Position = UDim2.new(0.5, x, 0, 322)
         holder.Size = UDim2.fromOffset(w, 54)
         holder.BackgroundTransparency = 1
         holder.ZIndex = 5
