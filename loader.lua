@@ -169,7 +169,7 @@ local function DBGate()
         g.Rotation = 90
         g.Color = ColorSequence.new(Color3.fromRGB(255, 170, 238), Color3.fromRGB(150, 112, 255))
         g.Parent = mark
-        label(root, "private script hub", 14, 128, Color3.fromRGB(208, 192, 232), Enum.Font.GothamBold)
+        label(root, "invite only", 14, 128, Color3.fromRGB(208, 192, 232), Enum.Font.GothamBold)
     end
     label(root, "Enter your key to continue", 15, 202, Color3.fromRGB(208, 192, 232))
 
