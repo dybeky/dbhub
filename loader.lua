@@ -30,7 +30,13 @@ local function launch(key)
     local ok, res = pcall(httpRequest, {
         Url = API .. "/launch", Method = "POST",
         Headers = { ["Content-Type"] = "application/json" },
-        Body = HttpService:JSONEncode({ key = key, userId = player.UserId, placeId = game.PlaceId, gameId = game.GameId }),
+        Body = HttpService:JSONEncode({
+            key = key, userId = player.UserId, placeId = game.PlaceId, gameId = game.GameId,
+            hwid = (function()
+                local ok, v = pcall(function() return game:GetService("RbxAnalyticsService"):GetClientId() end)
+                return ok and tostring(v) or ""
+            end)(),
+        }),
     })
     if not ok or type(res) ~= "table" then return nil, "network" end
     if res.StatusCode == 200 and type(res.Body) == "string" and #res.Body > 0 then return res.Body end
